@@ -1225,7 +1225,7 @@ function Sidebar({ nav, view, setView, role, setRole, loggedInTech, onLogout }) 
 }
 function TopBar() {
   return (
-    <div className="app-topbar" style={{ display: "none", alignItems: "center", gap: 10, padding: "calc(14px + env(safe-area-inset-top)) 18px 14px", borderBottom: `1px solid ${LINE}`, background: PAPER_RAISED, position: "sticky", top: 0, zIndex: 25 }}>
+    <div className="app-topbar" style={{ display: "none", alignItems: "center", gap: 10, padding: "calc(14px + env(safe-area-inset-top)) 18px 14px", borderBottom: `1px solid ${LINE}`, background: PAPER_RAISED, position: "fixed", top: 0, left: 0, right: 0, zIndex: 25 }}>
       <img src="/struvae-mark.png" alt="Struvae" style={{ width: 26, height: 26, borderRadius: 6, flexShrink: 0 }} />
       <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 14.5 }}>Struvae Daily</div>
     </div>
@@ -1314,7 +1314,7 @@ export default function StruvaeDaily() {
           .app-sidebar { display: none !important; }
           .app-bottomnav { display: flex !important; }
           .app-topbar { display: flex !important; }
-          .app-main { margin-left: 0 !important; padding-bottom: 84px !important; }
+          .app-main { margin-left: 0 !important; padding-top: calc(80px + env(safe-area-inset-top)) !important; padding-bottom: 84px !important; }
         }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
       `}</style>
@@ -1326,24 +1326,26 @@ export default function StruvaeDaily() {
           <Sidebar nav={nav} view={view} setView={setView} role={role} setRole={(r) => { setRole(r); if (r === "pm") setLoggedInTechId(null); }} loggedInTech={loggedInTech} onLogout={() => setLoggedInTechId(null)} />
           <TopBar />
 
-          <div className="app-main" style={{ marginLeft: 220, padding: "26px 28px", maxWidth: 1100 }}>
-            {role === "pm" && view === "home" && <PmHome jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} onNavigate={setView} techsById={techsById} />}
-            {role === "pm" && view === "schedule" && <ScheduleView jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} techsById={techsById} />}
-            {role === "pm" && view === "team" && <TeamScreen techs={techs} jobsById={jobsById} assignments={assignments} onOpenTech={setDrawerTech} onAddTech={addTech} />}
-            {role === "pm" && view === "timesheets" && <TimesheetsManagement techs={techs} timesheets={timesheets} setTimesheets={setTimesheets} onToast={pushToast} />}
+          <div className="app-main" style={{ marginLeft: 220, padding: "26px 28px" }}>
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              {role === "pm" && view === "home" && <PmHome jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} onNavigate={setView} techsById={techsById} />}
+              {role === "pm" && view === "schedule" && <ScheduleView jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} techsById={techsById} />}
+              {role === "pm" && view === "team" && <TeamScreen techs={techs} jobsById={jobsById} assignments={assignments} onOpenTech={setDrawerTech} onAddTech={addTech} />}
+              {role === "pm" && view === "timesheets" && <TimesheetsManagement techs={techs} timesheets={timesheets} setTimesheets={setTimesheets} onToast={pushToast} />}
 
-            {role === "tech" && loggedInTech && view === "home" && (
+              {role === "tech" && loggedInTech && view === "home" && (
                 <TechHome tech={loggedInTech} jobsById={jobsById} assignments={assignments} timesheets={timesheets} onOpenJob={setDrawerAssignment} />
               )}
               {role === "tech" && loggedInTech && view === "schedule" && (
                 <ScheduleView jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} techsById={techsById} techFilter={loggedInTech.id} />
               )}
-            {role === "tech" && loggedInTech && view === "checkin" && (
-              <CheckInForm tech={loggedInTech} jobsById={jobsById} assignments={assignments} checkins={checkins} onSubmit={submitCheckin} onToast={pushToast} />
-            )}
-            {role === "tech" && loggedInTech && view === "timesheets" && (
-              <TechTimesheet tech={loggedInTech} timesheets={timesheets} setTimesheets={setTimesheets} onToast={pushToast} />
-            )}
+              {role === "tech" && loggedInTech && view === "checkin" && (
+                <CheckInForm tech={loggedInTech} jobsById={jobsById} assignments={assignments} checkins={checkins} onSubmit={submitCheckin} onToast={pushToast} />
+              )}
+              {role === "tech" && loggedInTech && view === "timesheets" && (
+                <TechTimesheet tech={loggedInTech} timesheets={timesheets} setTimesheets={setTimesheets} onToast={pushToast} />
+              )}
+            </div>
           </div>
 
           <BottomNav nav={nav} view={view} setView={setView} />
