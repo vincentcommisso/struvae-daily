@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Home, Calendar, Users, Clock, ChevronLeft, ChevronRight, ChevronDown,
   X, Check, AlertTriangle, Send, Play, Square, FileText, ClipboardCheck,
-  CheckCircle2, LayoutGrid, Edit3, User,
+  CheckCircle2, LayoutGrid, User,
   Lock, LogOut, Delete, Plus, Trash2,
 } from "lucide-react";
 
@@ -34,8 +34,9 @@ const FONT_BODY = "'IBM Plex Sans', sans-serif";
 const FONT_MONO = "'IBM Plex Mono', monospace";
 
 const JOB_STATUS_META = {
-  scheduled: { label: "Scheduled", color: MUTED, bg: "rgba(144,149,154,0.12)" },
-  complete:  { label: "Complete",  color: REPORT, bg: REPORT_SOFT },
+  scheduled: { label: "Scheduled", color: MUTED,   bg: "rgba(144,149,154,0.12)" },
+  started:   { label: "Started",   color: CAPTURE, bg: CAPTURE_SOFT },
+  complete:  { label: "Complete",  color: REPORT,  bg: REPORT_SOFT },
 };
 const ARRIVAL_META = {
   onTime: { label: "On time", color: REPORT },
@@ -82,7 +83,7 @@ const AVATAR_COLORS = [CAPTURE, REPORT, ESTIMATE, OPS];
 
 const JOBS_SEED = [
   {
-    id: "j1", name: "Nguyen Residence", address: "5128 Riverside Dr", customer: "David & Karen Nguyen",
+    id: "j1", address: "5128 Riverside Dr", customer: "David & Karen Nguyen",
     lossType: "Water Mitigation", category: "Category 1", claimNumber: "CLM-48213",
     insurer: "Aviva", dateOfLoss: "Aug 18, 2026", phase: "Mitigation",
     accessIssue: false, equipmentPickupRequired: false,
@@ -92,7 +93,7 @@ const JOBS_SEED = [
     status: "scheduled",
   },
   {
-    id: "j2", name: "Ferreira Residence", address: "220 Oak Hollow Ct", customer: "Marisol Ferreira",
+    id: "j2", address: "220 Oak Hollow Ct", customer: "Marisol Ferreira",
     lossType: "Equipment Monitoring", category: "Category 1", claimNumber: "CLM-48190",
     insurer: "Intact", dateOfLoss: "Aug 15, 2026", phase: "Mitigation",
     accessIssue: false, equipmentPickupRequired: true,
@@ -102,7 +103,7 @@ const JOBS_SEED = [
     status: "scheduled",
   },
   {
-    id: "j3", name: "Whitfield Residence", address: "88 Birchwood Ave", customer: "Alan Whitfield",
+    id: "j3", address: "88 Birchwood Ave", customer: "Alan Whitfield",
     lossType: "Category 3 Mitigation", category: "Category 3", claimNumber: "CLM-48260",
     insurer: "Aviva", dateOfLoss: "Aug 21, 2026", phase: "Emergency",
     accessIssue: true, equipmentPickupRequired: false,
@@ -112,7 +113,7 @@ const JOBS_SEED = [
     status: "scheduled",
   },
   {
-    id: "j4", name: "Okafor Residence", address: "14 Maple Ridge Crescent", customer: "The Okafor Family",
+    id: "j4", address: "14 Maple Ridge Crescent", customer: "The Okafor Family",
     lossType: "Rebuild", category: "N/A", claimNumber: "CLM-47990",
     insurer: "Intact", dateOfLoss: "Aug 2, 2026", phase: "Repair",
     accessIssue: false, equipmentPickupRequired: false,
@@ -182,9 +183,9 @@ function Avatar({ tech, size = 30 }) {
     </div>
   );
 }
-function CompleteBadge({ status, small }) {
-  if (status !== "complete") return null;
-  const m = JOB_STATUS_META.complete;
+function JobStatusBadge({ status, small }) {
+  if (status !== "started" && status !== "complete") return null;
+  const m = JOB_STATUS_META[status];
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: small ? 10.5 : 11.5, fontWeight: 700, color: m.color, background: m.bg, padding: small ? "3px 7px" : "4px 9px", borderRadius: 100, fontFamily: FONT_MONO, whiteSpace: "nowrap" }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: m.color }} />
@@ -329,15 +330,15 @@ function FieldSelect({ options, value, onChange }) {
    JOB CARD
    ============================================================ */
 function JobCard({ assignment, job, tech, onClick, compact }) {
-  const complete = job.status === "complete";
+  const borderColor = job.status === "complete" ? REPORT : job.status === "started" ? CAPTURE : LINE_STRONG;
   return (
-    <Card onClick={onClick} style={{ padding: 14, borderLeft: `3px solid ${complete ? REPORT : LINE_STRONG}` }}>
+    <Card onClick={onClick} style={{ padding: 14, borderLeft: `3px solid ${borderColor}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
         <div>
-          <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 14 }}>{job.name}</div>
+          <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 14 }}>{job.customer}</div>
           <div style={{ fontSize: 11.5, color: MUTED, marginTop: 1 }}>{job.address} · {job.lossType}</div>
         </div>
-        <CompleteBadge status={job.status} small />
+        <JobStatusBadge status={job.status} small />
       </div>
       <div style={{ fontSize: 11.5, color: INK_SOFT, fontFamily: FONT_MONO, marginBottom: compact ? 0 : 8 }}>{assignment.start} – {assignment.end}</div>
       {!compact && tech && (
@@ -352,7 +353,7 @@ function JobCard({ assignment, job, tech, onClick, compact }) {
 /* ============================================================
    JOB DETAIL DRAWER
    ============================================================ */
-function JobDrawer({ job, assignment, tech, open, onClose, isPm, onUpdateJob, onMarkComplete, onToast }) {
+function JobDrawer({ job, assignment, tech, open, onClose, isPm, onUpdateJob, onMarkStarted, onMarkComplete, onToast }) {
   if (!job) return null;
   const setEquip = (key, delta) => {
     const next = Math.max(0, (job.equipment[key] || 0) + delta);
@@ -360,9 +361,9 @@ function JobDrawer({ job, assignment, tech, open, onClose, isPm, onUpdateJob, on
   };
   return (
     <Drawer open={open} onClose={onClose} width={440}>
-      <DrawerHeader title={job.name} subtitle={`${job.address} — ${job.lossType}`} onClose={onClose} />
+      <DrawerHeader title={job.customer} subtitle={`${job.address} — ${job.lossType}`} onClose={onClose} />
       <div style={{ padding: "18px 22px" }}>
-        {job.status === "complete" && <div style={{ marginBottom: 16 }}><CompleteBadge status={job.status} /></div>}
+        {(job.status === "started" || job.status === "complete") && <div style={{ marginBottom: 16 }}><JobStatusBadge status={job.status} /></div>}
 
         <DrawerRow icon={User} label="Customer" value={job.customer} />
         <DrawerRow icon={FileText} label="Claim Number" value={job.claimNumber} />
@@ -414,8 +415,12 @@ function JobDrawer({ job, assignment, tech, open, onClose, isPm, onUpdateJob, on
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 26, flexWrap: "wrap" }}>
-          {isPm && <DrawerAction icon={Edit3} label="Edit Assignment" onClick={() => onToast("Assignment editing coming soon")} />}
-          <DrawerAction icon={CheckCircle2} label="Mark Complete" primary onClick={() => { onMarkComplete(job.id); onToast(`${job.name} marked complete`); }} />
+          {job.status === "scheduled" && (
+            <DrawerAction icon={Play} label="Mark Started" onClick={() => { onMarkStarted(job.id); onToast(`${job.customer} marked started`); }} />
+          )}
+          {job.status !== "complete" && (
+            <DrawerAction icon={CheckCircle2} label="Mark Complete" primary onClick={() => { onMarkComplete(job.id); onToast(`${job.customer} marked complete`); }} />
+          )}
         </div>
       </div>
     </Drawer>
@@ -499,8 +504,8 @@ function TechDrawer({ tech, open, onClose, assignments, jobsById, onUpdateTech, 
             return (
               <div key={a.id} style={{ padding: 10, borderRadius: 8, border: `1px solid ${LINE}`, background: PAPER }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{job.name}</span>
-                  <CompleteBadge status={job.status} small />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{job.customer}</span>
+                  <JobStatusBadge status={job.status} small />
                 </div>
                 <div style={{ fontSize: 11.5, color: MUTED, fontFamily: FONT_MONO }}>{a.start} – {a.end}</div>
               </div>
@@ -545,8 +550,8 @@ function PmHome({ jobsById, assignments, onOpenJob, onNavigate, techsById }) {
   const pickupsDue = allJobs.filter((j) => j.equipmentPickupRequired);
 
   const notifications = [
-    ...accessIssues.map((j) => ({ icon: AlertTriangle, color: DANGER, text: `${j.name} — access issue flagged, needs attention` })),
-    ...pickupsDue.map((j) => ({ icon: FileText, color: MUTED, text: `${j.name} — equipment pickup due` })),
+    ...accessIssues.map((j) => ({ icon: AlertTriangle, color: DANGER, text: `${j.customer} — access issue flagged, needs attention` })),
+    ...pickupsDue.map((j) => ({ icon: FileText, color: MUTED, text: `${j.customer} — equipment pickup due` })),
   ];
 
   return (
@@ -697,7 +702,7 @@ function ScheduleView({ jobsById, assignments, onOpenJob, techsById, techFilter 
                     const bg = complete ? REPORT_SOFT : CAPTURE_SOFT;
                     return (
                       <button key={a.id} onClick={() => onOpenJob(a)} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${color}33`, background: bg, cursor: "pointer", textAlign: "left" }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: INK }}>{job.name}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: INK }}>{job.customer}</div>
                         <div style={{ fontSize: 10.5, color: INK_SOFT, fontFamily: FONT_MONO }}>{a.start} – {a.end}</div>
                       </button>
                     );
@@ -740,7 +745,7 @@ function TeamScreen({ techs, jobsById, assignments, onOpenTech, onAddTech }) {
                 <div>
                   <div style={{ fontSize: 11, color: MUTED, marginBottom: 4 }}>Today</div>
                   {todays.slice(0, 2).map((a) => (
-                    <div key={a.id} style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>{jobsById[a.jobId].name}</div>
+                    <div key={a.id} style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>{jobsById[a.jobId].customer}</div>
                   ))}
                   {todays.length > 2 && <div style={{ fontSize: 11, color: MUTED }}>+{todays.length - 2} more</div>}
                 </div>
@@ -859,9 +864,9 @@ function TechHome({ tech, jobsById, assignments, timesheets, onOpenJob }) {
             <div key={a.id} style={{ background: PAPER_RAISED, border: `1px solid ${LINE}`, borderRadius: 12, padding: 15 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                 <div style={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: CAPTURE }}>{a.start}</div>
-                <CompleteBadge status={job.status} small />
+                <JobStatusBadge status={job.status} small />
               </div>
-              <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 15.5, marginBottom: 2 }}>{job.name}</div>
+              <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 15.5, marginBottom: 2 }}>{job.customer}</div>
               <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 4 }}>{job.address}</div>
               <div style={{ fontSize: 12.5, color: INK_SOFT, marginBottom: 12 }}>{job.lossType}</div>
               <button onClick={() => onOpenJob(a)} style={{ width: "100%", padding: "9px", borderRadius: 8, border: `1px solid ${LINE_STRONG}`, background: "#fff", color: INK, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>View Job</button>
@@ -909,7 +914,7 @@ function CheckInForm({ tech, jobsById, assignments, checkins, onSubmit, onToast 
 
       <div style={{ background: PAPER_RAISED, border: `1px solid ${LINE}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
         <FieldBlock label="Job">
-          <FieldSelect value={jobId} onChange={setJobId} options={todaysAssignments.map((a) => ({ id: a.jobId, label: jobsById[a.jobId].name }))} />
+          <FieldSelect value={jobId} onChange={setJobId} options={todaysAssignments.map((a) => ({ id: a.jobId, label: jobsById[a.jobId].customer }))} />
         </FieldBlock>
 
         <FieldBlock label="Arrival">
@@ -957,7 +962,7 @@ function CheckInForm({ tech, jobsById, assignments, checkins, onSubmit, onToast 
             {todaysCheckins.map((c) => (
               <div key={c.id} style={{ padding: 11, borderRadius: 8, border: `1px solid ${LINE}`, background: PAPER_RAISED, fontSize: 12.5 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontWeight: 600 }}>{jobsById[c.jobId].name}</span>
+                  <span style={{ fontWeight: 600 }}>{jobsById[c.jobId].customer}</span>
                   <span style={{ color: MUTED, fontFamily: FONT_MONO, fontSize: 11 }}>{c.submittedAt.slice(11, 16)}</span>
                 </div>
                 <div style={{ color: INK_SOFT }}>{c.tasks}</div>
@@ -1218,6 +1223,14 @@ function Sidebar({ nav, view, setView, role, setRole, loggedInTech, onLogout }) 
     </div>
   );
 }
+function TopBar() {
+  return (
+    <div className="app-topbar" style={{ display: "none", alignItems: "center", gap: 10, padding: "calc(14px + env(safe-area-inset-top)) 18px 14px", borderBottom: `1px solid ${LINE}`, background: PAPER_RAISED, position: "sticky", top: 0, zIndex: 25 }}>
+      <img src="/struvae-mark.png" alt="Struvae" style={{ width: 26, height: 26, borderRadius: 6, flexShrink: 0 }} />
+      <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 14.5 }}>Struvae Daily</div>
+    </div>
+  );
+}
 function BottomNav({ nav, view, setView }) {
   return (
     <div className="app-bottomnav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: PAPER_RAISED, borderTop: `1px solid ${LINE}`, display: "none", justifyContent: "space-around", padding: "8px 4px calc(8px + env(safe-area-inset-bottom))", zIndex: 30 }}>
@@ -1262,6 +1275,7 @@ export default function StruvaeDaily() {
   };
 
   const updateJob = (jobId, patch) => setJobs((js) => js.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
+  const markStarted = (jobId) => updateJob(jobId, { status: "started" });
   const markComplete = (jobId) => updateJob(jobId, { status: "complete" });
 
   const submitCheckin = (data) => {
@@ -1299,6 +1313,7 @@ export default function StruvaeDaily() {
         @media (max-width: 860px) {
           .app-sidebar { display: none !important; }
           .app-bottomnav { display: flex !important; }
+          .app-topbar { display: flex !important; }
           .app-main { margin-left: 0 !important; padding-bottom: 84px !important; }
         }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -1309,6 +1324,7 @@ export default function StruvaeDaily() {
       ) : (
         <>
           <Sidebar nav={nav} view={view} setView={setView} role={role} setRole={(r) => { setRole(r); if (r === "pm") setLoggedInTechId(null); }} loggedInTech={loggedInTech} onLogout={() => setLoggedInTechId(null)} />
+          <TopBar />
 
           <div className="app-main" style={{ marginLeft: 220, padding: "26px 28px", maxWidth: 1100 }}>
             {role === "pm" && view === "home" && <PmHome jobsById={jobsById} assignments={assignments} onOpenJob={setDrawerAssignment} onNavigate={setView} techsById={techsById} />}
@@ -1337,6 +1353,7 @@ export default function StruvaeDaily() {
             open={!!drawerAssignment} onClose={() => setDrawerAssignment(null)}
             isPm={role === "pm"}
             onUpdateJob={updateJob}
+            onMarkStarted={(jobId) => { markStarted(jobId); setDrawerAssignment(null); }}
             onMarkComplete={(jobId) => { markComplete(jobId); setDrawerAssignment(null); }}
             onToast={pushToast}
           />
